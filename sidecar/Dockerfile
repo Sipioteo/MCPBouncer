@@ -1,17 +1,17 @@
-# Stage 1: Build
-FROM golang:1.23-alpine AS builder
+# Stage 1: Build (cross-compile via Go, runs natively on the build host)
+FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS builder
+
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /src
 
-# Copy module files and download dependencies
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source code
 COPY . .
 
-# Build the binary with optimizations for distribution
-RUN CGO_ENABLED=0 GOOS=linux go build \
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build \
     -ldflags="-s -w" \
     -o /out/bouncer \
     ./cmd/bouncer

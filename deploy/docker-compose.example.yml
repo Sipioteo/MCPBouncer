@@ -18,12 +18,14 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedByDefault=false"
       - "--experimental.plugins.mcpbouncer.moduleName=github.com/Sipioteo/traefik-mcpbouncer"
-      - "--experimental.plugins.mcpbouncer.version=v0.1.0"
+      - "--experimental.plugins.mcpbouncer.version=v0.0.1"
 
   bouncer:
-    build:
-      context: ../sidecar
-      dockerfile: Dockerfile
+    image: ghcr.io/sipioteo/mcpbouncer-sidecar:latest
+    # For local development build from source instead:
+    # build:
+    #   context: ../sidecar
+    #   dockerfile: Dockerfile
     container_name: bouncer
     networks:
       - edge
