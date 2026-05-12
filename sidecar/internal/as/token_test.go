@@ -165,12 +165,12 @@ func TestHandleToken_RefreshFlow(t *testing.T) {
 		t.Fatalf("MintRefreshToken: %v", err)
 	}
 	rt := store.RefreshToken{
-		TokenHash:  hashRT,
-		Sub:        "testuser",
-		Resource:   deps.rc.Name,
-		ClientID:   "test-client-id",
-		Scopes:     "openid email",
-		ExpiresAt:  expiry,
+		TokenHash: hashRT,
+		Sub:       "testuser",
+		Resource:  deps.rc.Name,
+		ClientID:  "test-client-id",
+		Scopes:    "openid email",
+		ExpiresAt: expiry,
 	}
 	if err := deps.store.InsertRefreshToken(context.Background(), rt); err != nil {
 		t.Fatalf("InsertRefreshToken: %v", err)

@@ -108,14 +108,14 @@ func HandleRegister(s *store.Store, rc *config.ResourceConfig, w http.ResponseWr
 	}
 
 	resp := map[string]any{
-		"client_id":                   clientID,
-		"client_secret":               clientSecret,
-		"client_secret_expires_at":    0,
-		"redirect_uris":               req.RedirectURIs,
-		"grant_types":                 []string{"authorization_code", "refresh_token"},
-		"token_endpoint_auth_method":  "client_secret_post",
-		"registration_access_token":   rat,
-		"registration_client_uri":     rc.PublicBase + "/oauth/register/" + clientID,
+		"client_id":                  clientID,
+		"client_secret":              clientSecret,
+		"client_secret_expires_at":   0,
+		"redirect_uris":              req.RedirectURIs,
+		"grant_types":                []string{"authorization_code", "refresh_token"},
+		"token_endpoint_auth_method": "client_secret_post",
+		"registration_access_token":  rat,
+		"registration_client_uri":    rc.PublicBase + "/oauth/register/" + clientID,
 	}
 	writeJSON(w, http.StatusCreated, resp)
 }

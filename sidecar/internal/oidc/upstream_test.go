@@ -76,7 +76,7 @@ func TestExchangeCode(t *testing.T) {
 		switch r.URL.Path {
 		case "/.well-known/openid-configuration":
 			_ = json.NewEncoder(w).Encode(map[string]string{
-				"issuer":        srvURL,
+				"issuer":         srvURL,
 				"token_endpoint": srvURL + "/token",
 			})
 		case "/token":

@@ -207,4 +207,3 @@ func TestResourceConfig(t *testing.T) {
 		t.Fatalf("expected updated clientID, got %s", got2.ClientID)
 	}
 }
-

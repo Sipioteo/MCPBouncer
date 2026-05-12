@@ -15,11 +15,11 @@ func HandleProtectedResource(rc *config.ResourceConfig, w http.ResponseWriter, r
 		scopes = append(scopes, s)
 	}
 	body := map[string]any{
-		"resource":                  rc.PublicBase,
-		"authorization_servers":     []string{rc.PublicBase},
-		"bearer_methods_supported":  []string{"header"},
-		"scopes_supported":          scopes,
-		"resource_documentation":    "https://github.com/Sipioteo/MCPBouncer",
+		"resource":                 rc.PublicBase,
+		"authorization_servers":    []string{rc.PublicBase},
+		"bearer_methods_supported": []string{"header"},
+		"scopes_supported":         scopes,
+		"resource_documentation":   "https://github.com/Sipioteo/MCPBouncer",
 	}
 	writeJSON(w, http.StatusOK, body)
 }

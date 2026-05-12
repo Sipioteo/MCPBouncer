@@ -142,4 +142,3 @@ func HandleCallback(s *store.Store, oidcMgr *oidc.Manager, cipher *crypto.Cipher
 
 	http.Redirect(w, r, clientRedirect.String(), http.StatusFound)
 }
-

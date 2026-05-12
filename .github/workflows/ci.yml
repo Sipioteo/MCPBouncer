@@ -32,6 +32,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-plugin-
 
+      - name: gofmt -s
+        run: |
+          diff=$(gofmt -s -l .)
+          if [ -n "$diff" ]; then
+            echo "::error::gofmt -s found unformatted files:"
+            echo "$diff"
+            exit 1
+          fi
+
       - name: Build
         run: go build ./...
 
@@ -62,6 +71,15 @@ jobs:
           key: ${{ runner.os }}-go-sidecar-${{ hashFiles('sidecar/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-sidecar-
+
+      - name: gofmt -s
+        run: |
+          diff=$(gofmt -s -l .)
+          if [ -n "$diff" ]; then
+            echo "::error::gofmt -s found unformatted files:"
+            echo "$diff"
+            exit 1
+          fi
 
       - name: Build
         run: go build ./...

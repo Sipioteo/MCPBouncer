@@ -39,20 +39,20 @@ type Client struct {
 }
 
 type AuthSession struct {
-	State               string
-	CodeChallenge       string
-	CodeChallengeMethod string
-	RedirectURI         string
-	ClientID            string
-	Resource            string
-	Scopes              string
-	ProviderIssuer      string
-	PublicBase          string
-	UpstreamState       string
+	State                string
+	CodeChallenge        string
+	CodeChallengeMethod  string
+	RedirectURI          string
+	ClientID             string
+	Resource             string
+	Scopes               string
+	ProviderIssuer       string
+	PublicBase           string
+	UpstreamState        string
 	UpstreamPKCEVerifier string
-	OriginalState       string
-	CreatedAt           time.Time
-	ExpiresAt           time.Time
+	OriginalState        string
+	CreatedAt            time.Time
+	ExpiresAt            time.Time
 }
 
 type Code struct {
