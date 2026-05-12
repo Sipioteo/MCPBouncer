@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  plugin:
+    name: Plugin
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./plugin
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-plugin-${{ hashFiles('plugin/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-plugin-
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race ./...
+
+  sidecar:
+    name: Sidecar
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./sidecar
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-sidecar-${{ hashFiles('sidecar/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-sidecar-
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race -coverprofile=cover.out ./...
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sidecar-coverage
+          path: sidecar/cover.out
+          if-no-files-found: ignore

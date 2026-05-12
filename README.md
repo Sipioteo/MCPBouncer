@@ -1,5 +1,14 @@
 # MCPBouncer
 
+[![CI](https://github.com/Sipioteo/MCPBouncer/actions/workflows/ci.yml/badge.svg)](https://github.com/Sipioteo/MCPBouncer/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/Sipioteo/MCPBouncer/actions/workflows/codeql.yml/badge.svg)](https://github.com/Sipioteo/MCPBouncer/actions/workflows/codeql.yml)
+[![govulncheck](https://github.com/Sipioteo/MCPBouncer/actions/workflows/govulncheck.yml/badge.svg)](https://github.com/Sipioteo/MCPBouncer/actions/workflows/govulncheck.yml)
+[![Trivy](https://github.com/Sipioteo/MCPBouncer/actions/workflows/trivy.yml/badge.svg)](https://github.com/Sipioteo/MCPBouncer/actions/workflows/trivy.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Sipioteo/MCPBouncer)](https://goreportcard.com/report/github.com/Sipioteo/MCPBouncer)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Sidecar release](https://img.shields.io/github/v/release/Sipioteo/MCPBouncer?filter=sidecar-*&label=sidecar)](https://github.com/Sipioteo/MCPBouncer/releases)
+[![Plugin release](https://img.shields.io/github/v/release/Sipioteo/MCPBouncer?filter=plugin-*&label=plugin)](https://github.com/Sipioteo/MCPBouncer/releases)
+
 Drop OAuth 2.1 onto any MCP server with a Traefik label.
 
 ## What it does
