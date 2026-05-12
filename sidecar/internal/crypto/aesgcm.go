@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"strings"
 )
 
 type Cipher struct {
@@ -14,11 +15,18 @@ type Cipher struct {
 }
 
 func NewCipher(keyBase64 string) (*Cipher, error) {
-	key, err := base64.RawStdEncoding.DecodeString(keyBase64)
+	keyBase64 = strings.TrimSpace(keyBase64)
+	key, err := base64.StdEncoding.DecodeString(keyBase64)
 	if err != nil {
-		key, err = base64.StdEncoding.DecodeString(keyBase64)
+		key, err = base64.RawStdEncoding.DecodeString(keyBase64)
 		if err != nil {
-			return nil, fmt.Errorf("NewCipher decode key: %w", err)
+			key, err = base64.URLEncoding.DecodeString(keyBase64)
+			if err != nil {
+				key, err = base64.RawURLEncoding.DecodeString(keyBase64)
+				if err != nil {
+					return nil, fmt.Errorf("NewCipher decode key: %w", err)
+				}
+			}
 		}
 	}
 	if len(key) != 32 {
