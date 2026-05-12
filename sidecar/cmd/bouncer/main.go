@@ -202,11 +202,16 @@ func mustEnv(key string) string {
 	return v
 }
 
-// envDuration reads an integer env var and multiplies by unit.
+// envDuration reads a duration env var. Accepts either:
+//   - Go duration syntax: "1h", "30m", "720h"
+//   - plain integer multiplied by `unit`: "30" with unit=24h → 30 days
 func envDuration(key string, defaultVal int, unit time.Duration) time.Duration {
 	v := os.Getenv(key)
 	if v == "" {
 		return time.Duration(defaultVal) * unit
+	}
+	if d, err := time.ParseDuration(v); err == nil && d > 0 {
+		return d
 	}
 	n, err := strconv.Atoi(v)
 	if err != nil || n <= 0 {
