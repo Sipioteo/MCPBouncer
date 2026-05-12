@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sipiote/mcpbouncer-sidecar/internal/store"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/store"
 )
 
 func openTestDB(t *testing.T) *store.Store {

@@ -11,8 +11,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/sipiote/mcpbouncer-sidecar/internal/config"
-	"github.com/sipiote/mcpbouncer-sidecar/internal/store"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/config"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/store"
 )
 
 type registerRequest struct {

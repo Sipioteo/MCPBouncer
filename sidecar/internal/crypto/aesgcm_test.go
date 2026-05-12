@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/sipiote/mcpbouncer-sidecar/internal/crypto"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/crypto"
 )
 
 func TestRoundTrip(t *testing.T) {

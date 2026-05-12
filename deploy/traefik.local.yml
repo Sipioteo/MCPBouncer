@@ -7,7 +7,7 @@ global:
 experimental:
   localPlugins:
     mcpbouncer:
-      moduleName: github.com/sipiote/mcpbouncer
+      moduleName: github.com/Sipioteo/traefik-mcpbouncer
 
 entryPoints:
   web:
@@ -33,10 +33,10 @@ api:
 #   volumes:
 #     - /var/run/docker.sock:/var/run/docker.sock
 #     - ./traefik.local.yml:/etc/traefik/traefik.yml:ro
-#     - ../plugin:/plugins-local/src/github.com/sipiote/mcpbouncer:ro
+#     - ../plugin:/plugins-local/src/github.com/Sipioteo/traefik-mcpbouncer:ro
 #
 # Then update the Traefik startup args in docker-compose to use:
-#   --experimental.localPlugins.mcpbouncer.moduleName=github.com/sipiote/mcpbouncer
+#   --experimental.localPlugins.mcpbouncer.moduleName=github.com/Sipioteo/traefik-mcpbouncer
 #
 # This allows live reloading during development without rebuilding the plugin
 # or pushing to a registry.

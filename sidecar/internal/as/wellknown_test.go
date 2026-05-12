@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/sipiote/mcpbouncer-sidecar/internal/as"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/as"
 )
 
 func TestHandleProtectedResource(t *testing.T) {

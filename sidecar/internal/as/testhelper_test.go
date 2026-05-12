@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sipiote/mcpbouncer-sidecar/internal/config"
-	"github.com/sipiote/mcpbouncer-sidecar/internal/crypto"
-	"github.com/sipiote/mcpbouncer-sidecar/internal/keys"
-	"github.com/sipiote/mcpbouncer-sidecar/internal/store"
-	"github.com/sipiote/mcpbouncer-sidecar/internal/tokens"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/config"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/crypto"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/keys"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/store"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/tokens"
 )
 
 // testKeyB64 is a 32-byte zero-key in base64 for testing only.

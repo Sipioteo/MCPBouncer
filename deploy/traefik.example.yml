@@ -6,7 +6,7 @@ global:
 experimental:
   plugins:
     mcpbouncer:
-      moduleName: github.com/sipiote/mcpbouncer
+      moduleName: github.com/Sipioteo/traefik-mcpbouncer
       version: v0.1.0
 
 entryPoints:

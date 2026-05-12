@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/sipiote/mcpbouncer-sidecar/internal/config"
-	"github.com/sipiote/mcpbouncer-sidecar/internal/crypto"
-	"github.com/sipiote/mcpbouncer-sidecar/internal/oidc"
-	"github.com/sipiote/mcpbouncer-sidecar/internal/store"
-	"github.com/sipiote/mcpbouncer-sidecar/internal/tokens"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/config"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/crypto"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/oidc"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/store"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/tokens"
 )
 
 // HandleToken handles POST /oauth/token.

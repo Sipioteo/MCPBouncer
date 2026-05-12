@@ -1,0 +1,57 @@
+name: Sync plugin to traefik-mcpbouncer
+
+on:
+  push:
+    branches: [main]
+    tags: ['plugin-v*']
+  workflow_dispatch:
+
+concurrency:
+  group: sync-plugin
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up SSH for plugin repo
+        env:
+          DEPLOY_KEY: ${{ secrets.PLUGIN_REPO_DEPLOY_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Configure git identity
+        run: |
+          git config user.name "mcpbouncer-sync"
+          git config user.email "mcpbouncer-sync@users.noreply.github.com"
+
+      - name: Compute subtree split of plugin/
+        id: split
+        run: |
+          SHA=$(git subtree split --prefix=plugin HEAD)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Split commit: $SHA"
+
+      - name: Push to plugin repo main
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        run: |
+          git push --force git@github.com:Sipioteo/traefik-mcpbouncer.git \
+            ${{ steps.split.outputs.sha }}:refs/heads/main
+
+      - name: Push tag to plugin repo
+        if: startsWith(github.ref, 'refs/tags/plugin-v')
+        run: |
+          SRC_TAG="${GITHUB_REF#refs/tags/}"
+          DEST_TAG="${SRC_TAG#plugin-}"
+          echo "Propagating $SRC_TAG -> $DEST_TAG"
+          git push --force git@github.com:Sipioteo/traefik-mcpbouncer.git \
+            ${{ steps.split.outputs.sha }}:refs/heads/main
+          git push git@github.com:Sipioteo/traefik-mcpbouncer.git \
+            ${{ steps.split.outputs.sha }}:refs/tags/$DEST_TAG

@@ -7,7 +7,7 @@ import (
 	"encoding/pem"
 	"fmt"
 
-	"github.com/sipiote/mcpbouncer-sidecar/internal/store"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/store"
 )
 
 type JWK struct {

@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/sipiote/mcpbouncer-sidecar/internal/oidc"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/oidc"
 )
 
 func fakeIDToken(sub string) string {

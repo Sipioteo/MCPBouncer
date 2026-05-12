@@ -1,4 +1,4 @@
-module github.com/sipiote/mcpbouncer-sidecar
+module github.com/Sipioteo/MCPBouncer/sidecar
 
 go 1.23.0
 

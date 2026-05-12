@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sipiote/mcpbouncer-sidecar/internal/keys"
-	"github.com/sipiote/mcpbouncer-sidecar/internal/store"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/keys"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/store"
 )
 
 func openTestStore(t *testing.T) *store.Store {

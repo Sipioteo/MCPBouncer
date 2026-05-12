@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sipiote/mcpbouncer-sidecar/internal/store"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/store"
 )
 
 type Rotator struct {

@@ -65,7 +65,7 @@ MCPBouncer adds full OAuth 2.1 and OIDC support (DCR, PKCE, JWKS, key rotation) 
 
 Clone and prepare:
 ```bash
-git clone https://github.com/sipiote/MCPBouncer
+git clone https://github.com/Sipioteo/MCPBouncer
 cd MCPBouncer/deploy
 cp docker-compose.example.yml docker-compose.yml
 # Edit docker-compose.yml and traefik.example.yml with your IdP credentials

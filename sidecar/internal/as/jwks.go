@@ -3,7 +3,7 @@ package as
 import (
 	"net/http"
 
-	"github.com/sipiote/mcpbouncer-sidecar/internal/keys"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/keys"
 )
 
 // HandleJWKS returns the publishable JWKS for the sidecar's signing keys.

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/sipiote/mcpbouncer-sidecar/internal/config"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/config"
 )
 
 // HandleProtectedResource serves RFC 9728 oauth-protected-resource metadata.
@@ -19,7 +19,7 @@ func HandleProtectedResource(rc *config.ResourceConfig, w http.ResponseWriter, r
 		"authorization_servers":     []string{rc.PublicBase},
 		"bearer_methods_supported":  []string{"header"},
 		"scopes_supported":          scopes,
-		"resource_documentation":    "https://github.com/sipiote/mcpbouncer",
+		"resource_documentation":    "https://github.com/Sipioteo/MCPBouncer",
 	}
 	writeJSON(w, http.StatusOK, body)
 }
@@ -41,7 +41,7 @@ func HandleAuthorizationServer(rc *config.ResourceConfig, w http.ResponseWriter,
 		"code_challenge_methods_supported":      []string{"S256"},
 		"token_endpoint_auth_methods_supported": []string{"none", "client_secret_post", "client_secret_basic"},
 		"scopes_supported":                      scopes,
-		"service_documentation":                 "https://github.com/sipiote/mcpbouncer",
+		"service_documentation":                 "https://github.com/Sipioteo/MCPBouncer",
 	}
 	writeJSON(w, http.StatusOK, body)
 }
@@ -63,7 +63,7 @@ func HandleOpenIDConfiguration(rc *config.ResourceConfig, w http.ResponseWriter,
 		"code_challenge_methods_supported":      []string{"S256"},
 		"token_endpoint_auth_methods_supported": []string{"none", "client_secret_post", "client_secret_basic"},
 		"scopes_supported":                      scopes,
-		"service_documentation":                 "https://github.com/sipiote/mcpbouncer",
+		"service_documentation":                 "https://github.com/Sipioteo/MCPBouncer",
 		"subject_types_supported":               []string{"public"},
 		"id_token_signing_alg_values_supported": []string{"EdDSA"},
 	}

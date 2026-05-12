@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/sipiote/mcpbouncer-sidecar/internal/crypto"
-	"github.com/sipiote/mcpbouncer-sidecar/internal/store"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/crypto"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/store"
 )
 
 // ResourceConfig holds per-resource OAuth configuration extracted from X-MCPB-* headers.

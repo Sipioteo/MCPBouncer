@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sipiote/mcpbouncer-sidecar/internal/as"
-	"github.com/sipiote/mcpbouncer-sidecar/internal/oidc"
-	"github.com/sipiote/mcpbouncer-sidecar/internal/store"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/as"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/oidc"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/store"
 )
 
 func TestHandleCallback_FullRoundTrip(t *testing.T) {

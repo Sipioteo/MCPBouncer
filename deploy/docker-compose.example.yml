@@ -17,7 +17,7 @@ services:
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedByDefault=false"
-      - "--experimental.plugins.mcpbouncer.moduleName=github.com/sipiote/mcpbouncer"
+      - "--experimental.plugins.mcpbouncer.moduleName=github.com/Sipioteo/traefik-mcpbouncer"
       - "--experimental.plugins.mcpbouncer.version=v0.1.0"
 
   bouncer:

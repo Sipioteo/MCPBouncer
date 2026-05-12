@@ -12,8 +12,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/sipiote/mcpbouncer-sidecar/internal/config"
-	"github.com/sipiote/mcpbouncer-sidecar/internal/keys"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/config"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/keys"
 )
 
 // Issuer mints local JWTs and opaque refresh tokens.
