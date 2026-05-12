@@ -1,0 +1,101 @@
+version: "3.8"
+
+services:
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik.example.yml:/etc/traefik/traefik.yml:ro
+    networks:
+      - edge
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedByDefault=false"
+      - "--experimental.plugins.mcpbouncer.moduleName=github.com/sipiote/mcpbouncer"
+      - "--experimental.plugins.mcpbouncer.version=v0.1.0"
+
+  bouncer:
+    build:
+      context: ../sidecar
+      dockerfile: Dockerfile
+    container_name: bouncer
+    networks:
+      - edge
+    # Note: bouncer does NOT have traefik.enable=true
+    # It is accessible ONLY from within the Docker network via http://bouncer:8080
+    environment:
+      - BOUNCER_ENCRYPTION_KEY=${BOUNCER_ENCRYPTION_KEY:?error: BOUNCER_ENCRYPTION_KEY not set}
+      - BOUNCER_DB_PATH=/data/bouncer.db
+      - BOUNCER_LISTEN_ADDR=:8080
+      - BOUNCER_ACCESS_TOKEN_TTL=1h
+      - BOUNCER_REFRESH_TOKEN_TTL=720h  # 30 days
+      - BOUNCER_KEY_ROTATION_DAYS=30
+      - BOUNCER_KEY_OVERLAP_HOURS=24
+      - BOUNCER_LOG_LEVEL=info
+    volumes:
+      - bouncer-data:/data
+    depends_on:
+      - traefik
+
+  # Example MCP service: wiki via Google OAuth
+  wiki-mcp:
+    image: traefik/whoami:latest
+    container_name: wiki-mcp
+    networks:
+      - edge
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wiki.rule=Host(`mcp.localhost`) && PathPrefix(`/wiki`)"
+      - "traefik.http.routers.wiki.entrypoints=web"
+      - "traefik.http.routers.wiki.service=wiki"
+      - "traefik.http.services.wiki.loadbalancer.server.port=80"
+      - "traefik.http.services.wiki.loadbalancer.server.scheme=http"
+      - "traefik.http.routers.wiki.middlewares=mcpb-wiki@docker"
+      # MCPBouncer plugin configuration for wiki (Google)
+      - "traefik.http.middlewares.mcpb-wiki.plugin.mcpbouncer.resource=wiki"
+      - "traefik.http.middlewares.mcpb-wiki.plugin.mcpbouncer.providerIssuer=https://accounts.google.com"
+      - "traefik.http.middlewares.mcpb-wiki.plugin.mcpbouncer.clientID=${GOOGLE_CLIENT_ID:-placeholder-google-client-id}"
+      - "traefik.http.middlewares.mcpb-wiki.plugin.mcpbouncer.clientSecret=${GOOGLE_CLIENT_SECRET:-placeholder-google-client-secret}"
+      - "traefik.http.middlewares.mcpb-wiki.plugin.mcpbouncer.scopes=openid email profile"
+      - "traefik.http.middlewares.mcpb-wiki.plugin.mcpbouncer.sidecarURL=http://bouncer:8080"
+    depends_on:
+      - traefik
+      - bouncer
+
+  # Example MCP service: world via Zitadel OAuth
+  world-mcp:
+    image: traefik/whoami:latest
+    container_name: world-mcp
+    networks:
+      - edge
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.world.rule=Host(`mcp.localhost`) && PathPrefix(`/world`)"
+      - "traefik.http.routers.world.entrypoints=web"
+      - "traefik.http.routers.world.service=world"
+      - "traefik.http.services.world.loadbalancer.server.port=80"
+      - "traefik.http.services.world.loadbalancer.server.scheme=http"
+      - "traefik.http.routers.world.middlewares=mcpb-world@docker"
+      # MCPBouncer plugin configuration for world (Zitadel)
+      - "traefik.http.middlewares.mcpb-world.plugin.mcpbouncer.resource=world"
+      - "traefik.http.middlewares.mcpb-world.plugin.mcpbouncer.providerIssuer=https://auth.example.com"
+      - "traefik.http.middlewares.mcpb-world.plugin.mcpbouncer.clientID=${ZITADEL_CLIENT_ID:-placeholder-zitadel-client-id}"
+      - "traefik.http.middlewares.mcpb-world.plugin.mcpbouncer.clientSecret=${ZITADEL_CLIENT_SECRET:-placeholder-zitadel-client-secret}"
+      - "traefik.http.middlewares.mcpb-world.plugin.mcpbouncer.scopes=openid email profile"
+      - "traefik.http.middlewares.mcpb-world.plugin.mcpbouncer.sidecarURL=http://bouncer:8080"
+    depends_on:
+      - traefik
+      - bouncer
+
+networks:
+  edge:
+    driver: bridge
+
+volumes:
+  bouncer-data:

@@ -1,0 +1,84 @@
+package as_test
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"github.com/sipiote/mcpbouncer-sidecar/internal/as"
+)
+
+func TestHandleRegister(t *testing.T) {
+	deps := newTestDeps(t)
+
+	body := `{"redirect_uris":["https://client.example.com/callback"],"client_name":"Test Client","scope":"openid email"}`
+	req := httptest.NewRequest(http.MethodPost, "/oauth/register", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	as.HandleRegister(deps.store, deps.rc, rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d; body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	clientID, ok := resp["client_id"].(string)
+	if !ok || clientID == "" {
+		t.Errorf("expected non-empty client_id")
+	}
+	if resp["client_secret"] == "" {
+		t.Errorf("expected non-empty client_secret")
+	}
+	if resp["client_secret_expires_at"] != float64(0) {
+		t.Errorf("client_secret_expires_at should be 0")
+	}
+	if resp["registration_access_token"] == "" {
+		t.Errorf("expected registration_access_token")
+	}
+
+	// Verify persisted.
+	stored, err := deps.store.GetClient(context.Background(), clientID)
+	if err != nil {
+		t.Fatalf("GetClient: %v", err)
+	}
+	if stored == nil {
+		t.Fatalf("client not found in store after registration")
+	}
+	if stored.Resource != deps.rc.Name {
+		t.Errorf("client resource = %q, want %q", stored.Resource, deps.rc.Name)
+	}
+}
+
+func TestHandleRegister_NoRedirectURIs(t *testing.T) {
+	deps := newTestDeps(t)
+
+	body := `{"redirect_uris":[]}`
+	req := httptest.NewRequest(http.MethodPost, "/oauth/register", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	as.HandleRegister(deps.store, deps.rc, rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", rr.Code)
+	}
+}
+
+func TestHandleRegister_InvalidRedirectURI(t *testing.T) {
+	deps := newTestDeps(t)
+
+	body := `{"redirect_uris":["not-a-valid-url"]}`
+	req := httptest.NewRequest(http.MethodPost, "/oauth/register", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	as.HandleRegister(deps.store, deps.rc, rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", rr.Code)
+	}
+}

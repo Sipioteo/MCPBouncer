@@ -1,0 +1,42 @@
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+# MCPBouncer Traefik plugin configuration for local development
+# Uses experimental.localPlugins to load the plugin from the local filesystem
+experimental:
+  localPlugins:
+    mcpbouncer:
+      moduleName: github.com/sipiote/mcpbouncer
+
+entryPoints:
+  web:
+    address: ':80'
+  websecure:
+    address: ':443'
+
+# Docker provider for service discovery via labels
+providers:
+  docker:
+    endpoint: unix:///var/run/docker.sock
+    exposedByDefault: false
+    swarmMode: false
+
+api:
+  dashboard: true
+  insecure: true
+
+# Local development note:
+# To use localPlugins, bind-mount the plugin source into the Traefik container.
+# In docker-compose.yml, add to traefik service volumes:
+#
+#   volumes:
+#     - /var/run/docker.sock:/var/run/docker.sock
+#     - ./traefik.local.yml:/etc/traefik/traefik.yml:ro
+#     - ../plugin:/plugins-local/src/github.com/sipiote/mcpbouncer:ro
+#
+# Then update the Traefik startup args in docker-compose to use:
+#   --experimental.localPlugins.mcpbouncer.moduleName=github.com/sipiote/mcpbouncer
+#
+# This allows live reloading during development without rebuilding the plugin
+# or pushing to a registry.
