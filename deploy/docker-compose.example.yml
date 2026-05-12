@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   traefik:
     image: traefik:v3.0
@@ -32,14 +30,15 @@ services:
     # Note: bouncer does NOT have traefik.enable=true
     # It is accessible ONLY from within the Docker network via http://bouncer:8080
     environment:
-      - BOUNCER_ENCRYPTION_KEY=${BOUNCER_ENCRYPTION_KEY:?error: BOUNCER_ENCRYPTION_KEY not set}
-      - BOUNCER_DB_PATH=/data/bouncer.db
-      - BOUNCER_LISTEN_ADDR=:8080
-      - BOUNCER_ACCESS_TOKEN_TTL=1h
-      - BOUNCER_REFRESH_TOKEN_TTL=720h  # 30 days
-      - BOUNCER_KEY_ROTATION_DAYS=30
-      - BOUNCER_KEY_OVERLAP_HOURS=24
-      - BOUNCER_LOG_LEVEL=info
+      # Required: generate with `openssl rand -base64 32`
+      BOUNCER_ENCRYPTION_KEY: ${BOUNCER_ENCRYPTION_KEY:?BOUNCER_ENCRYPTION_KEY_is_required}
+      BOUNCER_DB_PATH: /data/bouncer.db
+      BOUNCER_LISTEN_ADDR: ":8080"
+      BOUNCER_ACCESS_TOKEN_TTL: 1h
+      BOUNCER_REFRESH_TOKEN_TTL: 720h  # 30 days
+      BOUNCER_KEY_ROTATION_DAYS: "30"
+      BOUNCER_KEY_OVERLAP_HOURS: "24"
+      BOUNCER_LOG_LEVEL: info
     volumes:
       - bouncer-data:/data
     depends_on:
