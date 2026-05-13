@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/banner.png" alt="MCPBouncer — OAuth 2.1 for any MCP server" width="100%">
+  <img src="https://raw.githubusercontent.com/Sipioteo/MCPBouncer/main/docs/assets/banner.png" alt="MCPBouncer — OAuth 2.1 for any MCP server" width="100%">
 </p>
 
 # MCPBouncer
