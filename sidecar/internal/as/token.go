@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -28,6 +29,16 @@ func HandleToken(s *store.Store, oidcMgr *oidc.Manager, issuer *tokens.Issuer, c
 	}
 
 	grantType := r.FormValue("grant_type")
+
+	slog.Info("token_request",
+		"grant_type", grantType,
+		"client_id_form", r.FormValue("client_id"),
+		"has_basic_auth", r.Header.Get("Authorization") != "",
+		"has_code", r.FormValue("code") != "",
+		"has_code_verifier", r.FormValue("code_verifier") != "",
+		"has_refresh_token", r.FormValue("refresh_token") != "",
+		"redirect_uri", r.FormValue("redirect_uri"),
+	)
 
 	// Authenticate client.
 	clientID, clientSecret, err := extractClientCredentials(r)

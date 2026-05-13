@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"time"
 
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/config"
@@ -82,6 +83,16 @@ func (i *Issuer) MintAccessToken(ctx context.Context, rc *config.ResourceConfig,
 
 	sig := ed25519.Sign(priv, []byte(signingInput))
 	sigEnc := base64.RawURLEncoding.EncodeToString(sig)
+
+	slog.Info("jwt_minted",
+		"iss", rc.PublicBase,
+		"aud", rc.PublicBase,
+		"sub", sub,
+		"scope", scopes,
+		"kid", k.Kid,
+		"exp_unix", exp.Unix(),
+		"resource_name", rc.Name,
+	)
 
 	return signingInput + "." + sigEnc, exp, nil
 }

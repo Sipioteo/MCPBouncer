@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
@@ -31,6 +32,16 @@ func HandleAuthorize(s *store.Store, oidcMgr *oidc.Manager, rc *config.ResourceC
 	codeChallengeMethod := q.Get("code_challenge_method")
 	state := q.Get("state")
 	scope := q.Get("scope")
+
+	slog.Info("authorize_request",
+		"client_id", clientID,
+		"redirect_uri", redirectURI,
+		"scope", scope,
+		"resource_param", q.Get("resource"),
+		"has_state", state != "",
+		"has_code_challenge", codeChallenge != "",
+		"code_challenge_method", codeChallengeMethod,
+	)
 
 	if clientID == "" || redirectURI == "" || codeChallenge == "" {
 		writeError(w, http.StatusBadRequest, "invalid_request", "missing required parameter")
