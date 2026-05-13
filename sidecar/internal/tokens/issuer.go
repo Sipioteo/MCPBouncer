@@ -54,15 +54,12 @@ func (i *Issuer) MintAccessToken(ctx context.Context, rc *config.ResourceConfig,
 		return "", time.Time{}, fmt.Errorf("MintAccessToken header marshal: %w", err)
 	}
 
-	// aud is the resource URI (RFC 8707 + MCP auth spec).
-	// Include both the slash-less and slash-suffixed forms so the JWT matches
-	// whichever the client sent as `resource` on /authorize: Claude.ai sends
-	// "https://X/" while the metadata advertises "https://X".
-	audSlashless := rc.PublicBase
-	audSlashed := rc.PublicBase + "/"
+	// aud as a single string with trailing slash — Claude.ai sends
+	// `resource=https://X/` and pre-validates aud == resource literally,
+	// not tolerating arrays or trailing-slash normalization.
 	claims := map[string]any{
 		"iss":   rc.PublicBase,
-		"aud":   []string{audSlashless, audSlashed},
+		"aud":   rc.PublicBase + "/",
 		"sub":   sub,
 		"scope": scopes,
 		"iat":   now.Unix(),
