@@ -12,11 +12,17 @@ type DB struct {
 }
 
 func Open(path string) (*DB, error) {
-	dsn := path + "?_journal_mode=WAL&_busy_timeout=5000&_foreign_keys=on"
+	dsn := path + "?_journal_mode=WAL&_busy_timeout=10000&_foreign_keys=on&_synchronous=NORMAL"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("store.Open: %w", err)
 	}
+	// Serialize writes through a single connection. SQLite is one-writer-at-a-time;
+	// using >1 connection just produces SQLITE_BUSY for low-traffic workloads
+	// like ours. With max=1 + busy_timeout=10s, write contention disappears.
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	db.SetConnMaxLifetime(0)
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("store.Open ping: %w", err)
 	}

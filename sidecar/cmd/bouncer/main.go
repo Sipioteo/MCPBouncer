@@ -157,7 +157,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:         listenAddr,
-		Handler:      mux,
+		Handler:      logRequests(mux),
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -184,6 +184,35 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("shutdown error", "error", err)
 	}
+}
+
+// logRequests wraps the mux with INFO-level request logging.
+// Logs: method, path, status, duration, plus the X-MCPB-Resource header that
+// the plugin injects so we know which MCP the request was for.
+func logRequests(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		sw := &statusRecorder{ResponseWriter: w, status: 200}
+		next.ServeHTTP(sw, r)
+		slog.Info("http",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", sw.status,
+			"duration_ms", time.Since(start).Milliseconds(),
+			"resource", r.Header.Get("X-MCPB-Resource"),
+			"remote", r.RemoteAddr,
+		)
+	})
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (s *statusRecorder) WriteHeader(code int) {
+	s.status = code
+	s.ResponseWriter.WriteHeader(code)
 }
 
 func envOr(key, def string) string {
