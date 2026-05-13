@@ -33,7 +33,7 @@ func HandleAuthorize(s *store.Store, oidcMgr *oidc.Manager, rc *config.ResourceC
 	state := q.Get("state")
 	scope := q.Get("scope")
 
-	slog.Info("authorize_request",
+	slog.Debug("authorize_request",
 		"client_id", clientID,
 		"redirect_uri", redirectURI,
 		"scope", scope,

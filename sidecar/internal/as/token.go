@@ -11,6 +11,7 @@ import (
 
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/config"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/crypto"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/logx"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/oidc"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/store"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/tokens"
@@ -30,7 +31,7 @@ func HandleToken(s *store.Store, oidcMgr *oidc.Manager, issuer *tokens.Issuer, c
 
 	grantType := r.FormValue("grant_type")
 
-	slog.Info("token_request",
+	slog.Debug("token_request",
 		"grant_type", grantType,
 		"client_id_form", r.FormValue("client_id"),
 		"has_basic_auth", r.Header.Get("Authorization") != "",
@@ -165,7 +166,7 @@ func handleAuthorizationCode(s *store.Store, issuer *tokens.Issuer, cipher *cryp
 		"scope":         codeRow.Scopes,
 	}
 	respBytes, _ := json.Marshal(resp)
-	slog.Info("token_response", "body", string(respBytes))
+	logx.Trace("token_response", "body", string(respBytes))
 	writeJSON(w, http.StatusOK, resp)
 }
 

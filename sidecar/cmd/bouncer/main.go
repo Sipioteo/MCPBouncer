@@ -14,19 +14,22 @@ import (
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/config"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/crypto"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/keys"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/logx"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/oidc"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/store"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/tokens"
 )
 
 func main() {
-	// Configure logger.
-	logLevel := slog.LevelInfo
-	if os.Getenv("BOUNCER_LOG_LEVEL") == "debug" {
-		logLevel = slog.LevelDebug
-	}
-	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel}))
+	// Configure logger. BOUNCER_LOG_LEVEL accepts trace|debug|info|warn|error.
+	// See internal/logx for the level semantics.
+	logLevel := logx.ParseLevel(os.Getenv("BOUNCER_LOG_LEVEL"))
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+		Level:       logLevel,
+		ReplaceAttr: logx.ReplaceLevel,
+	}))
 	slog.SetDefault(logger)
+	slog.Info("logger configured", "level", logLevel.String())
 
 	// Read env vars.
 	dbPath := envOr("BOUNCER_DB_PATH", "/data/bouncer.db")

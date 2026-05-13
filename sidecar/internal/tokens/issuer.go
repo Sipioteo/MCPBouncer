@@ -15,6 +15,7 @@ import (
 
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/config"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/keys"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/logx"
 )
 
 // Issuer mints local JWTs and opaque refresh tokens.
@@ -85,13 +86,21 @@ func (i *Issuer) MintAccessToken(ctx context.Context, rc *config.ResourceConfig,
 	sig := ed25519.Sign(priv, []byte(signingInput))
 	sigEnc := base64.RawURLEncoding.EncodeToString(sig)
 
-	claimsLog, _ := json.Marshal(claims)
 	tok := signingInput + "." + sigEnc
+
+	// Always-on summary: enough for audit (who got a token for what) but no secrets.
 	slog.Info("jwt_minted",
-		"claims_json", string(claimsLog),
-		"token", tok,
+		"sub", sub,
+		"aud", rc.PublicBase+"/",
+		"scope", scopes,
+		"kid", k.Kid,
+		"exp_unix", exp.Unix(),
 		"resource_name", rc.Name,
+		"client_id", clientID,
 	)
+	// Sensitive: full claims + raw JWT. Trace only.
+	claimsLog, _ := json.Marshal(claims)
+	logx.Trace("jwt_minted_full", "claims_json", string(claimsLog), "token", tok)
 
 	return tok, exp, nil
 }
