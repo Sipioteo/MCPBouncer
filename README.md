@@ -30,28 +30,11 @@ MCPBouncer adds full OAuth 2.1 and OIDC support (DCR, PKCE, JWKS, key rotation) 
 
 ## How it works
 
-```mermaid
-flowchart TB
-    Client["External MCP client"]
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Sipioteo/MCPBouncer/main/docs/assets/architecture.svg" alt="MCPBouncer architecture: client → Traefik (with plugin) → sidecar / MCP image / upstream IdP" width="100%">
+</p>
 
-    subgraph Traefik["Traefik · entrypoints :80 / :443"]
-        Plugin["MCPBouncer plugin (Yaegi)<br/>· JWT verify (Ed25519 / RS256)<br/>· OAuth path muxing"]
-    end
-
-    Sidecar["MCPBouncer sidecar<br/>· DCR · PKCE · JWKS rotation<br/>· SQLite (local, encrypted at rest)"]
-    MCP["MCP server image<br/>(any HTTP MCP, no native auth)"]
-    IdP["Upstream IdP<br/>Google / Zitadel / …"]
-
-    Client -- "HTTPS" --> Plugin
-    Plugin -- "/.well-known + /oauth/*" --> Sidecar
-    Plugin -- "authenticated MCP traffic" --> MCP
-    Sidecar -- "OIDC discovery + code exchange" --> IdP
-
-    classDef hl fill:#00ADD8,stroke:#006A85,stroke-width:1px,color:#FFFFFF;
-    classDef ext fill:#F4F6F8,stroke:#B7C0CB,color:#0F1A24;
-    class Plugin,Sidecar hl;
-    class Client,MCP,IdP ext;
-```
+> Source for the diagram: [`docs/assets/architecture.mmd`](docs/assets/architecture.mmd) (Mermaid). Rendered to SVG so it works on Docker Hub and other Markdown viewers that don't support Mermaid natively.
 
 **Plugin** (in Traefik):
 - Intercepts requests under each MCP's PathPrefix.
