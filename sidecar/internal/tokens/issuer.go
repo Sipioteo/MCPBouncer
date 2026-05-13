@@ -53,9 +53,12 @@ func (i *Issuer) MintAccessToken(ctx context.Context, rc *config.ResourceConfig,
 		return "", time.Time{}, fmt.Errorf("MintAccessToken header marshal: %w", err)
 	}
 
+	// aud MUST be the resource URI (RFC 8707 + MCP auth spec).
+	// The client compares aud against the "resource" field in
+	// /.well-known/oauth-protected-resource, which is always the publicBase.
 	claims := map[string]any{
 		"iss":   rc.PublicBase,
-		"aud":   rc.Audience,
+		"aud":   rc.PublicBase,
 		"sub":   sub,
 		"scope": scopes,
 		"iat":   now.Unix(),
