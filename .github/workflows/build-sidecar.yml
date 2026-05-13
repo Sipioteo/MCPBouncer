@@ -73,12 +73,14 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
-      - name: Sync Docker Hub description from README
-        uses: peter-evans/dockerhub-description@v4
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: sipioteo/mcpbouncer-sidecar
-          short-description: "OAuth 2.1 / OIDC bouncer sidecar for MCP servers (Traefik companion)"
-          readme-filepath: ./README.md
-          enable-url-completion: true
+      # Sync of long-description on Docker Hub requires a PAT with Admin scope.
+      # If/when DOCKERHUB_TOKEN is rotated to Admin scope, re-enable this step.
+      # - name: Sync Docker Hub description from README
+      #   uses: peter-evans/dockerhub-description@v4
+      #   with:
+      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
+      #     repository: sipioteo/mcpbouncer-sidecar
+      #     short-description: "OAuth 2.1 / OIDC bouncer sidecar for MCP servers (Traefik companion)"
+      #     readme-filepath: ./README.md
+      #     enable-url-completion: true
