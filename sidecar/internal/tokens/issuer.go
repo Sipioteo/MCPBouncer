@@ -29,8 +29,8 @@ func NewIssuer(rotator *keys.Rotator, accessTTL, refreshTTL time.Duration) *Issu
 	return &Issuer{rotator: rotator, accessTTL: accessTTL, refreshTTL: refreshTTL}
 }
 
-// MintAccessToken creates a signed EdDSA JWT access token.
-func (i *Issuer) MintAccessToken(ctx context.Context, rc *config.ResourceConfig, sub, scopes string, extraClaims map[string]any) (token string, expiresAt time.Time, err error) {
+// MintAccessToken creates a signed EdDSA JWT access token per RFC 9068.
+func (i *Issuer) MintAccessToken(ctx context.Context, rc *config.ResourceConfig, sub, scopes, clientID string, extraClaims map[string]any) (token string, expiresAt time.Time, err error) {
 	k, priv, err := i.rotator.ActiveKey(ctx)
 	if err != nil {
 		return "", time.Time{}, fmt.Errorf("MintAccessToken: %w", err)
@@ -45,9 +45,10 @@ func (i *Issuer) MintAccessToken(ctx context.Context, rc *config.ResourceConfig,
 	}
 	jti := hex.EncodeToString(jtiBytes)
 
+	// typ "at+jwt" identifies this as a JWT-formatted access token (RFC 9068).
 	headerJSON, err := json.Marshal(map[string]string{
 		"alg": "EdDSA",
-		"typ": "JWT",
+		"typ": "at+jwt",
 		"kid": k.Kid,
 	})
 	if err != nil {
@@ -55,17 +56,17 @@ func (i *Issuer) MintAccessToken(ctx context.Context, rc *config.ResourceConfig,
 	}
 
 	// aud as a single string with trailing slash — Claude.ai sends
-	// `resource=https://X/` and pre-validates aud == resource literally,
-	// not tolerating arrays or trailing-slash normalization.
+	// `resource=https://X/` and pre-validates aud == resource literally.
 	claims := map[string]any{
-		"iss":   rc.PublicBase,
-		"aud":   rc.PublicBase + "/",
-		"sub":   sub,
-		"scope": scopes,
-		"iat":   now.Unix(),
-		"nbf":   now.Unix(),
-		"exp":   exp.Unix(),
-		"jti":   jti,
+		"iss":       rc.PublicBase,
+		"aud":       rc.PublicBase + "/",
+		"sub":       sub,
+		"client_id": clientID,
+		"scope":     scopes,
+		"iat":       now.Unix(),
+		"nbf":       now.Unix(),
+		"exp":       exp.Unix(),
+		"jti":       jti,
 	}
 	for kk, v := range extraClaims {
 		if _, exists := claims[kk]; !exists {

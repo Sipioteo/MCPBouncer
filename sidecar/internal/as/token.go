@@ -130,7 +130,7 @@ func handleAuthorizationCode(s *store.Store, issuer *tokens.Issuer, cipher *cryp
 	}
 
 	// Mint access token.
-	accessToken, _, err := issuer.MintAccessToken(r.Context(), rc, codeRow.Sub, codeRow.Scopes, extraClaims)
+	accessToken, _, err := issuer.MintAccessToken(r.Context(), rc, codeRow.Sub, codeRow.Scopes, codeRow.ClientID, extraClaims)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "server_error", "failed to mint access token: "+err.Error())
 		return
@@ -218,7 +218,7 @@ func handleRefreshToken(s *store.Store, oidcMgr *oidc.Manager, issuer *tokens.Is
 	// Mint new local access + refresh.
 	var extraClaims map[string]any // we don't re-fetch userinfo on refresh for simplicity
 
-	accessToken, _, err := issuer.MintAccessToken(r.Context(), rc, rt.Sub, rt.Scopes, extraClaims)
+	accessToken, _, err := issuer.MintAccessToken(r.Context(), rc, rt.Sub, rt.Scopes, rt.ClientID, extraClaims)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "server_error", "failed to mint access token")
 		return
