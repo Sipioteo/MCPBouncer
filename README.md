@@ -103,6 +103,7 @@ Attach these labels to your MCP container in `docker-compose.yml`:
 | `traefik.http.middlewares.<name>.plugin.mcpbouncer.audience` | string | No | JWT `aud` claim (default: same as `resource`) |
 | `traefik.http.middlewares.<name>.plugin.mcpbouncer.jwksCacheTTLSeconds` | int | No | JWKS cache TTL in seconds (default: `300`) |
 | `traefik.http.middlewares.<name>.plugin.mcpbouncer.requiredScopes` | string | No | Space-separated scopes required for access (checked before forwarding to MCP) |
+| `traefik.http.middlewares.<name>.plugin.mcpbouncer.pathPrefix` | string | No | Stable base path under the host used for `publicBase` (the JWT `iss` and OAuth metadata URLs). Set `""` for one MCP per host, `/wiki` for a subpath; default `*` derives from the request URL (legacy) |
 
 See `docs/labels.md` for extended examples and notes.
 
