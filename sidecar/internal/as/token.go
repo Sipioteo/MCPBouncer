@@ -157,13 +157,16 @@ func handleAuthorizationCode(s *store.Store, issuer *tokens.Issuer, cipher *cryp
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"access_token":  accessToken,
 		"token_type":    "Bearer",
 		"expires_in":    int(issuer.AccessTTL().Seconds()),
 		"refresh_token": rawRefresh,
 		"scope":         codeRow.Scopes,
-	})
+	}
+	respBytes, _ := json.Marshal(resp)
+	slog.Info("token_response", "body", string(respBytes))
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func handleRefreshToken(s *store.Store, oidcMgr *oidc.Manager, issuer *tokens.Issuer, cipher *crypto.Cipher, rc *config.ResourceConfig, client *store.Client, w http.ResponseWriter, r *http.Request) {

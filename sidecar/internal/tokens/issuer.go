@@ -87,17 +87,15 @@ func (i *Issuer) MintAccessToken(ctx context.Context, rc *config.ResourceConfig,
 	sig := ed25519.Sign(priv, []byte(signingInput))
 	sigEnc := base64.RawURLEncoding.EncodeToString(sig)
 
+	claimsLog, _ := json.Marshal(claims)
+	tok := signingInput + "." + sigEnc
 	slog.Info("jwt_minted",
-		"iss", rc.PublicBase,
-		"aud", rc.PublicBase,
-		"sub", sub,
-		"scope", scopes,
-		"kid", k.Kid,
-		"exp_unix", exp.Unix(),
+		"claims_json", string(claimsLog),
+		"token", tok,
 		"resource_name", rc.Name,
 	)
 
-	return signingInput + "." + sigEnc, exp, nil
+	return tok, exp, nil
 }
 
 // AccessTTL returns the configured access token TTL.
