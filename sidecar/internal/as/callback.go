@@ -77,9 +77,25 @@ func HandleCallback(s *store.Store, oidcMgr *oidc.Manager, cipher *crypto.Cipher
 		sub = "unknown"
 	}
 
-	// Remove standard JWT claims from extra claims to avoid conflicts.
-	for _, k := range []string{"iss", "aud", "exp", "iat", "nbf", "jti", "scope"} {
-		delete(userClaims, k)
+	// Keep only safe profile-style claims for the access token.
+	// Drop standard JWT claims (we set our own) and ID-Token-specific claims
+	// (at_hash, azp, nonce, auth_time, sub) so the minted token doesn't look
+	// like an ID Token to RFC 9068-aware clients.
+	allowed := map[string]bool{
+		"email":          true,
+		"email_verified": true,
+		"name":           true,
+		"given_name":     true,
+		"family_name":    true,
+		"picture":        true,
+		"locale":         true,
+		"hd":             true,
+		"preferred_username": true,
+	}
+	for k := range userClaims {
+		if !allowed[k] {
+			delete(userClaims, k)
+		}
 	}
 
 	claimsJSON, err := json.Marshal(userClaims)
