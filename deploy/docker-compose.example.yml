@@ -16,7 +16,7 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedByDefault=false"
       - "--experimental.plugins.mcpbouncer.moduleName=github.com/Sipioteo/traefik-mcpbouncer"
-      - "--experimental.plugins.mcpbouncer.version=v0.0.1"
+      - "--experimental.plugins.mcpbouncer.version=v0.1.7"
 
   bouncer:
     # Published to Docker Hub and GHCR (same digest):
