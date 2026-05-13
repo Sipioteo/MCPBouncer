@@ -19,7 +19,10 @@ services:
       - "--experimental.plugins.mcpbouncer.version=v0.0.1"
 
   bouncer:
-    image: ghcr.io/sipioteo/mcpbouncer-sidecar:latest
+    # Published to Docker Hub and GHCR (same digest):
+    #   docker.io/sipioteo/mcpbouncer-sidecar:latest
+    #   ghcr.io/sipioteo/mcpbouncer-sidecar:latest
+    image: sipioteo/mcpbouncer-sidecar:latest
     # For local development build from source instead:
     # build:
     #   context: ../sidecar

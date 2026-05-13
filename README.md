@@ -13,6 +13,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Sidecar release](https://img.shields.io/github/v/release/Sipioteo/MCPBouncer?filter=sidecar-*&label=sidecar)](https://github.com/Sipioteo/MCPBouncer/releases)
 [![Plugin release](https://img.shields.io/github/v/release/Sipioteo/MCPBouncer?filter=plugin-*&label=plugin)](https://github.com/Sipioteo/MCPBouncer/releases)
+[![Docker Hub](https://img.shields.io/docker/v/sipioteo/mcpbouncer-sidecar?logo=docker&label=docker%20hub&sort=semver)](https://hub.docker.com/r/sipioteo/mcpbouncer-sidecar)
+[![Docker pulls](https://img.shields.io/docker/pulls/sipioteo/mcpbouncer-sidecar.svg?logo=docker)](https://hub.docker.com/r/sipioteo/mcpbouncer-sidecar)
+[![Docker image size](https://img.shields.io/docker/image-size/sipioteo/mcpbouncer-sidecar/latest?logo=docker)](https://hub.docker.com/r/sipioteo/mcpbouncer-sidecar)
 
 Drop OAuth 2.1 onto any MCP server with a Traefik label.
 
