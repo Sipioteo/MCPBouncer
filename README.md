@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/banner.png" alt="MCPBouncer — OAuth 2.1 for any MCP server" width="100%">
+</p>
+
 # MCPBouncer
 
 [![CI](https://github.com/Sipioteo/MCPBouncer/actions/workflows/ci.yml/badge.svg)](https://github.com/Sipioteo/MCPBouncer/actions/workflows/ci.yml)
