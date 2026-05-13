@@ -27,37 +27,27 @@ MCPBouncer adds full OAuth 2.1 and OIDC support (DCR, PKCE, JWKS, key rotation) 
 
 ## How it works
 
-```
-┌─ External Client ─┐
-│   (MCP client)    │
-└────────┬──────────┘
-         │ HTTP request
-         ↓
-    ┌─────────────────────────────────┐
-    │  Traefik (port 443/80)          │
-    │  ┌─────────────────────────────┐│
-    │  │ MCPBouncer Plugin (Yaegi)    ││
-    │  │ Intercepts OAuth paths      ││
-    │  │ Validates JWT in-process    ││
-    │  └────────┬──────────┬──────────┘│
-    └───────────┼──────────┼───────────┘
-                │          │
-        OAuth paths   Regular MCP paths
-                │          │
-                ↓          ↓
-        ┌──────────────────────────┐
-        │   Sidecar (internal)     │
-        │ Port: 8080 (Docker net)  │
-        │ Handles all OAuth flows  │
-        │ Manages local JWT issuer │
-        │ Stores refresh tokens    │
-        └────────┬─────────────────┘
-                 │
-                 ↓ OIDC discovery
-            ┌─────────────────┐
-            │  Upstream IdP   │
-            │ (Google/Zitadel)│
-            └─────────────────┘
+```mermaid
+flowchart TB
+    Client["External MCP client"]
+
+    subgraph Traefik["Traefik · entrypoints :80 / :443"]
+        Plugin["MCPBouncer plugin (Yaegi)<br/>· JWT verify (Ed25519 / RS256)<br/>· OAuth path muxing"]
+    end
+
+    Sidecar["MCPBouncer sidecar<br/>· DCR · PKCE · JWKS rotation<br/>· SQLite (local, encrypted at rest)"]
+    MCP["MCP server image<br/>(any HTTP MCP, no native auth)"]
+    IdP["Upstream IdP<br/>Google / Zitadel / …"]
+
+    Client -- "HTTPS" --> Plugin
+    Plugin -- "/.well-known + /oauth/*" --> Sidecar
+    Plugin -- "authenticated MCP traffic" --> MCP
+    Sidecar -- "OIDC discovery + code exchange" --> IdP
+
+    classDef hl fill:#00ADD8,stroke:#006A85,stroke-width:1px,color:#FFFFFF;
+    classDef ext fill:#F4F6F8,stroke:#B7C0CB,color:#0F1A24;
+    class Plugin,Sidecar hl;
+    class Client,MCP,IdP ext;
 ```
 
 **Plugin** (in Traefik):
