@@ -56,11 +56,13 @@ func (i *Issuer) MintAccessToken(ctx context.Context, rc *config.ResourceConfig,
 		return "", time.Time{}, fmt.Errorf("MintAccessToken header marshal: %w", err)
 	}
 
-	// aud as a single string with trailing slash — Claude.ai sends
-	// `resource=https://X/` and pre-validates aud == resource literally.
+	// aud as a single-element array per RFC 7519 §4.1.3.
+	// The sole element retains the trailing slash that Claude.ai sends as the
+	// resource parameter literal, so aud[0] == resource still matches exactly.
+	audVal := []string{rc.PublicBase + "/"}
 	claims := map[string]any{
 		"iss":       rc.PublicBase,
-		"aud":       rc.PublicBase + "/",
+		"aud":       audVal,
 		"sub":       sub,
 		"client_id": clientID,
 		"scope":     scopes,
