@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/config"
@@ -58,9 +60,16 @@ func HandleToken(s *store.Store, oidcMgr *oidc.Manager, issuer *tokens.Issuer, c
 		return
 	}
 
-	// Verify secret if provided (skip for public clients sending only client_id).
-	if clientSecret != "" {
+	// Enforce client_secret for confidential clients (those with a stored hash).
+	// A stolen client_id alone must not be sufficient.
+	if client.ClientSecretHash != "" {
+		if clientSecret == "" {
+			w.Header().Set("WWW-Authenticate", `Basic realm="oauth"`)
+			writeError(w, http.StatusUnauthorized, "invalid_client", "client_secret required")
+			return
+		}
 		if sha256Hex(clientSecret) != client.ClientSecretHash {
+			w.Header().Set("WWW-Authenticate", `Basic realm="oauth"`)
 			writeError(w, http.StatusUnauthorized, "invalid_client", "invalid client_secret")
 			return
 		}
@@ -119,6 +128,12 @@ func handleAuthorizationCode(s *store.Store, issuer *tokens.Issuer, cipher *cryp
 			writeError(w, http.StatusBadRequest, "invalid_grant", "code_verifier does not match code_challenge")
 			return
 		}
+	} else {
+		// Defense-in-depth: reject any method other than S256. If authorize.go
+		// ever accepts a new method, the token endpoint must not silently skip
+		// verification.
+		writeError(w, http.StatusBadRequest, "invalid_grant", "unsupported pkce method")
+		return
 	}
 
 	// Parse extra claims.
@@ -202,13 +217,26 @@ func handleRefreshToken(s *store.Store, oidcMgr *oidc.Manager, issuer *tokens.Is
 	}
 
 	// Optionally refresh upstream tokens.
+	strictUpstream, _ := strconv.ParseBool(os.Getenv("BOUNCER_STRICT_UPSTREAM_REFRESH"))
 	upstreamRefreshEnc := rt.UpstreamRefreshEnc
 	if len(upstreamRefreshEnc) > 0 && oidcMgr != nil {
 		if plain, err := cipher.Decrypt(upstreamRefreshEnc); err == nil {
-			provider, err := oidcMgr.Discover(r.Context(), rc.ProviderIssuer)
-			if err == nil {
-				upstreamResp, err := oidcMgr.RefreshTokens(r.Context(), provider, rc.ClientID, rc.ClientSecret, string(plain))
-				if err == nil && upstreamResp.RefreshToken != "" {
+			provider, discoverErr := oidcMgr.Discover(r.Context(), rc.ProviderIssuer)
+			if discoverErr != nil {
+				slog.Warn("upstream_discover_failed_during_refresh", "error", discoverErr)
+				if strictUpstream {
+					writeError(w, http.StatusBadRequest, "invalid_grant", "upstream refresh failed")
+					return
+				}
+			} else {
+				upstreamResp, refreshErr := oidcMgr.RefreshTokens(r.Context(), provider, rc.ClientID, rc.ClientSecret, string(plain))
+				if refreshErr != nil {
+					if strictUpstream {
+						writeError(w, http.StatusBadRequest, "invalid_grant", "upstream refresh failed")
+						return
+					}
+					slog.Info("upstream_refresh_failed_best_effort", "error", refreshErr)
+				} else if upstreamResp.RefreshToken != "" {
 					if enc, err := cipher.Encrypt([]byte(upstreamResp.RefreshToken)); err == nil {
 						upstreamRefreshEnc = enc
 					}
