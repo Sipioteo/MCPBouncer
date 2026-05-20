@@ -3,17 +3,60 @@ package as
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"regexp"
 	"time"
 
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/config"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/store"
 )
+
+// schemeRe matches valid URI scheme syntax (RFC 3986).
+var schemeRe = regexp.MustCompile(`^[a-z][a-z0-9+.\-]*$`)
+
+// schemeDenylist contains schemes that are always rejected.
+var schemeDenylist = map[string]bool{
+	"javascript": true,
+	"data":       true,
+	"file":       true,
+	"vbscript":   true,
+	"blob":       true,
+	"about":      true,
+}
+
+// validateRedirectURI returns an error description if the URI is not allowed,
+// or an empty string if it is valid.
+func validateRedirectURI(raw string) string {
+	parsed, err := url.ParseRequestURI(raw)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return "invalid redirect_uri: " + raw
+	}
+	scheme := parsed.Scheme
+	if schemeDenylist[scheme] {
+		return "redirect_uri scheme not allowed: " + scheme
+	}
+	switch scheme {
+	case "https", "mcp":
+		// always allowed
+	case "http":
+		host := parsed.Hostname()
+		if host != "localhost" && host != "127.0.0.1" {
+			return "http redirect_uri only allowed for localhost or 127.0.0.1, got: " + raw
+		}
+	default:
+		if !schemeRe.MatchString(scheme) {
+			return "redirect_uri has invalid scheme: " + scheme
+		}
+	}
+	return ""
+}
 
 type registerRequest struct {
 	RedirectURIs []string `json:"redirect_uris"`
@@ -27,6 +70,20 @@ func HandleRegister(s *store.Store, rc *config.ResourceConfig, w http.ResponseWr
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "invalid_request", "method not allowed")
 		return
+	}
+
+	// Optional Initial Access Token guard (RFC 7591 §3).
+	if initialToken := os.Getenv("BOUNCER_DCR_INITIAL_TOKEN"); initialToken != "" {
+		const prefix = "Bearer "
+		authHeader := r.Header.Get("Authorization")
+		var provided string
+		if len(authHeader) > len(prefix) && authHeader[:len(prefix)] == prefix {
+			provided = authHeader[len(prefix):]
+		}
+		if subtle.ConstantTimeCompare([]byte(provided), []byte(initialToken)) != 1 {
+			writeError(w, http.StatusUnauthorized, "invalid_token", "valid Bearer token required for registration")
+			return
+		}
 	}
 
 	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<16))
@@ -46,9 +103,8 @@ func HandleRegister(s *store.Store, rc *config.ResourceConfig, w http.ResponseWr
 		return
 	}
 	for _, ru := range req.RedirectURIs {
-		parsed, err := url.ParseRequestURI(ru)
-		if err != nil || parsed.Scheme == "" || parsed.Host == "" {
-			writeError(w, http.StatusBadRequest, "invalid_redirect_uri", "invalid redirect_uri: "+ru)
+		if desc := validateRedirectURI(ru); desc != "" {
+			writeError(w, http.StatusBadRequest, "invalid_redirect_uri", desc)
 			return
 		}
 	}
