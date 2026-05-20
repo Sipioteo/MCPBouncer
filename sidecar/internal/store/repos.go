@@ -404,6 +404,91 @@ func (s *Store) GetResourceConfig(ctx context.Context, name string) (*ResourceCo
 	return &rc, nil
 }
 
+// --- AuditEvents ---
+
+// CountAuditEvents returns the total number of rows in audit_events.
+// Intended for use in tests.
+func (s *Store) CountAuditEvents(ctx context.Context) (int64, error) {
+	var n int64
+	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit_events`).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("CountAuditEvents: %w", err)
+	}
+	return n, nil
+}
+
+func (s *Store) InsertAuditEvent(ctx context.Context, eventType, clientID, sub, ip, detailsJSON string, success bool) error {
+	successInt := 0
+	if success {
+		successInt = 1
+	}
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO audit_events(event_type,client_id,sub,ip,success,details_json,timestamp) VALUES(?,?,?,?,?,?,?)`,
+		eventType, clientID, sub, ip, successInt, detailsJSON, time.Now().Unix(),
+	)
+	if err != nil {
+		return fmt.Errorf("InsertAuditEvent: %w", err)
+	}
+	return nil
+}
+
+// --- EncryptionKeys ---
+
+// EncryptionKey is a row from the encryption_keys table. Material is the raw
+// 32-byte AES-256 key (BLOB), Status is "active" or "retired".
+type EncryptionKey struct {
+	KeyID     string
+	Material  []byte
+	Status    string
+	CreatedAt time.Time
+}
+
+func (s *Store) ListEncryptionKeys(ctx context.Context) ([]EncryptionKey, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT key_id,material,status,created_at FROM encryption_keys`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("ListEncryptionKeys: %w", err)
+	}
+	defer rows.Close()
+	var keys []EncryptionKey
+	for rows.Next() {
+		var k EncryptionKey
+		var createdAt int64
+		if err := rows.Scan(&k.KeyID, &k.Material, &k.Status, &createdAt); err != nil {
+			return nil, fmt.Errorf("ListEncryptionKeys scan: %w", err)
+		}
+		k.CreatedAt = time.Unix(createdAt, 0)
+		keys = append(keys, k)
+	}
+	return keys, rows.Err()
+}
+
+func (s *Store) InsertEncryptionKey(ctx context.Context, k EncryptionKey) error {
+	if k.CreatedAt.IsZero() {
+		k.CreatedAt = time.Now()
+	}
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO encryption_keys(key_id,material,status,created_at) VALUES(?,?,?,?)`,
+		k.KeyID, k.Material, k.Status, k.CreatedAt.Unix(),
+	)
+	if err != nil {
+		return fmt.Errorf("InsertEncryptionKey: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) SetEncryptionKeyStatus(ctx context.Context, keyID, status string) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE encryption_keys SET status=? WHERE key_id=?`,
+		status, keyID,
+	)
+	if err != nil {
+		return fmt.Errorf("SetEncryptionKeyStatus: %w", err)
+	}
+	return nil
+}
+
 // nullBytes returns nil if b is empty, otherwise b (for nullable BLOB columns).
 func nullBytes(b []byte) interface{} {
 	if len(b) == 0 {

@@ -105,6 +105,24 @@ func (db *DB) migrate() error {
 			audience TEXT NOT NULL,
 			updated_at INTEGER NOT NULL
 		)`,
+		`CREATE TABLE IF NOT EXISTS audit_events (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			event_type TEXT NOT NULL,
+			client_id TEXT NOT NULL DEFAULT '',
+			sub TEXT NOT NULL DEFAULT '',
+			ip TEXT NOT NULL DEFAULT '',
+			success INTEGER NOT NULL,
+			details_json TEXT NOT NULL DEFAULT '{}',
+			timestamp INTEGER NOT NULL
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_events_ts ON audit_events(timestamp)`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_events_type ON audit_events(event_type, timestamp)`,
+		`CREATE TABLE IF NOT EXISTS encryption_keys (
+			key_id TEXT PRIMARY KEY,
+			material BLOB NOT NULL,
+			status TEXT NOT NULL CHECK(status IN ('active','retired')),
+			created_at INTEGER NOT NULL
+		)`,
 	}
 	for _, s := range stmts {
 		if _, err := db.Exec(s); err != nil {
