@@ -87,6 +87,41 @@ func TestHandleAuthorize_UnknownClient(t *testing.T) {
 	}
 }
 
+func TestHandleAuthorize_PromptNoneForwardedToUpstream(t *testing.T) {
+	deps := newTestDeps(t)
+	upstream := fakeUpstreamServer(t)
+	deps.rc.ProviderIssuer = upstream.URL
+
+	insertTestClient(t, deps.store, []string{"https://client.example.com/callback"}, deps.rc.Name)
+
+	oidcMgr := oidc.NewManager()
+
+	verifier := base64.RawURLEncoding.EncodeToString([]byte("test-verifier-padded-to-32-bytes!"))
+	challenge := s256(verifier)
+
+	reqURL := "/oauth/authorize?response_type=code&client_id=test-client-id" +
+		"&redirect_uri=https://client.example.com/callback" +
+		"&code_challenge=" + url.QueryEscape(challenge) +
+		"&code_challenge_method=S256&state=mystate&prompt=none"
+
+	req := httptest.NewRequest(http.MethodGet, reqURL, nil)
+	rr := httptest.NewRecorder()
+	as.HandleAuthorize(deps.store, oidcMgr, deps.rc, rr, req)
+
+	if rr.Code != http.StatusFound {
+		t.Fatalf("expected 302, got %d; body: %s", rr.Code, rr.Body.String())
+	}
+
+	loc := rr.Header().Get("Location")
+	parsed, err := url.Parse(loc)
+	if err != nil {
+		t.Fatalf("parse Location: %v", err)
+	}
+	if parsed.Query().Get("prompt") != "none" {
+		t.Errorf("expected prompt=none in upstream redirect, got %q", parsed.Query().Get("prompt"))
+	}
+}
+
 func TestHandleAuthorize_WrongRedirectURI(t *testing.T) {
 	deps := newTestDeps(t)
 	upstream := fakeUpstreamServer(t)

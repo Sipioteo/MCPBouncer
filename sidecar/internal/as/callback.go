@@ -21,6 +21,35 @@ func HandleCallback(s *store.Store, oidcMgr *oidc.Manager, cipher *crypto.Cipher
 	code := q.Get("code")
 	state := q.Get("state") // this is our upstream_state (used as session PK)
 
+	// Handle upstream error responses (e.g. login_required from prompt=none).
+	// Per OAuth 2.0 §4.1.2.1 we must forward the error to the original client.
+	if upstreamErr := q.Get("error"); upstreamErr != "" {
+		// Try to look up the session so we can redirect to the correct client URI.
+		if state != "" {
+			sess, err := s.GetAuthSession(r.Context(), state)
+			if err == nil && sess != nil {
+				_ = s.DeleteAuthSession(r.Context(), state)
+				clientRedirect, parseErr := url.Parse(sess.RedirectURI)
+				if parseErr == nil {
+					cq := clientRedirect.Query()
+					cq.Set("error", upstreamErr)
+					if desc := q.Get("error_description"); desc != "" {
+						cq.Set("error_description", desc)
+					}
+					if sess.OriginalState != "" {
+						cq.Set("state", sess.OriginalState)
+					}
+					clientRedirect.RawQuery = cq.Encode()
+					http.Redirect(w, r, clientRedirect.String(), http.StatusFound)
+					return
+				}
+			}
+		}
+		// Fallback: no session or unparseable redirect_uri — return a generic error.
+		writeError(w, http.StatusBadRequest, upstreamErr, q.Get("error_description"))
+		return
+	}
+
 	if code == "" || state == "" {
 		writeError(w, http.StatusBadRequest, "invalid_request", "missing code or state")
 		return

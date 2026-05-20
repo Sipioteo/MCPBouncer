@@ -90,6 +90,60 @@ func TestHandleCallback_FullRoundTrip(t *testing.T) {
 	}
 }
 
+func TestHandleCallback_UpstreamLoginRequired(t *testing.T) {
+	deps := newTestDeps(t)
+	upstream := fakeUpstreamServer(t)
+	deps.rc.ProviderIssuer = upstream.URL
+	oidcMgr := oidc.NewManager()
+
+	upstreamState := base64.RawURLEncoding.EncodeToString([]byte("upstream-state-login-req"))
+	sess := store.AuthSession{
+		State:                upstreamState,
+		CodeChallenge:        s256("client-verifier"),
+		CodeChallengeMethod:  "S256",
+		RedirectURI:          "https://client.example.com/callback",
+		ClientID:             "client-abc",
+		Resource:             deps.rc.Name,
+		Scopes:               "openid",
+		ProviderIssuer:       upstream.URL,
+		PublicBase:           deps.rc.PublicBase,
+		UpstreamState:        upstreamState,
+		UpstreamPKCEVerifier: "upstream-verifier",
+		OriginalState:        "orig-state-123",
+		CreatedAt:            time.Now(),
+		ExpiresAt:            time.Now().Add(10 * time.Minute),
+	}
+	if err := deps.store.InsertAuthSession(context.Background(), sess); err != nil {
+		t.Fatalf("InsertAuthSession: %v", err)
+	}
+
+	// Simulate IdP returning error=login_required (prompt=none flow).
+	callbackURL := "/oauth/callback?error=login_required&error_description=User+session+required&state=" + url.QueryEscape(upstreamState)
+	req := httptest.NewRequest(http.MethodGet, callbackURL, nil)
+	rr := httptest.NewRecorder()
+	as.HandleCallback(deps.store, oidcMgr, deps.cipher, deps.rc, rr, req)
+
+	if rr.Code != http.StatusFound {
+		t.Fatalf("expected 302, got %d; body: %s", rr.Code, rr.Body.String())
+	}
+
+	loc := rr.Header().Get("Location")
+	if loc == "" {
+		t.Fatal("expected Location header")
+	}
+
+	parsedLoc, err := url.Parse(loc)
+	if err != nil {
+		t.Fatalf("parse Location: %v", err)
+	}
+	if parsedLoc.Query().Get("error") != "login_required" {
+		t.Errorf("error = %q, want login_required", parsedLoc.Query().Get("error"))
+	}
+	if parsedLoc.Query().Get("state") != "orig-state-123" {
+		t.Errorf("state = %q, want orig-state-123", parsedLoc.Query().Get("state"))
+	}
+}
+
 func TestHandleCallback_UnknownState(t *testing.T) {
 	deps := newTestDeps(t)
 	upstream := fakeUpstreamServer(t)

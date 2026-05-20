@@ -139,6 +139,10 @@ func HandleAuthorize(s *store.Store, oidcMgr *oidc.Manager, rc *config.ResourceC
 		"code_challenge":        {upstreamChallenge},
 		"code_challenge_method": {"S256"},
 	}
+	// Forward prompt parameter to upstream IdP so that prompt=none is honoured.
+	if prompt := q.Get("prompt"); prompt != "" {
+		uq.Set("prompt", prompt)
+	}
 	upstreamURL.RawQuery = uq.Encode()
 
 	http.Redirect(w, r, upstreamURL.String(), http.StatusFound)
