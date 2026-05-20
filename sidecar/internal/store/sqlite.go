@@ -89,6 +89,7 @@ func (db *DB) migrate() error {
 			sub TEXT NOT NULL,
 			resource TEXT NOT NULL,
 			client_id TEXT NOT NULL,
+			claims_json TEXT NOT NULL DEFAULT '',
 			upstream_refresh_enc BLOB,
 			scopes TEXT NOT NULL,
 			expires_at INTEGER NOT NULL
@@ -108,6 +109,33 @@ func (db *DB) migrate() error {
 		if _, err := db.Exec(s); err != nil {
 			return fmt.Errorf("migrate exec: %w", err)
 		}
+	}
+	if err := addColumnIfMissing(db, "refresh_tokens", "claims_json", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func addColumnIfMissing(db *DB, table, column, decl string) error {
+	rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%s)", table))
+	if err != nil {
+		return fmt.Errorf("table_info %s: %w", table, err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int
+		var name, ctype string
+		var notnull, pk int
+		var dflt sql.NullString
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			return fmt.Errorf("table_info scan: %w", err)
+		}
+		if name == column {
+			return nil
+		}
+	}
+	if _, err := db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, decl)); err != nil {
+		return fmt.Errorf("add column %s.%s: %w", table, column, err)
 	}
 	return nil
 }

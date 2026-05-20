@@ -74,6 +74,7 @@ type RefreshToken struct {
 	Sub                string
 	Resource           string
 	ClientID           string
+	ClaimsJSON         string
 	UpstreamRefreshEnc []byte
 	Scopes             string
 	ExpiresAt          time.Time
@@ -292,8 +293,8 @@ func (s *Store) DeleteExpiredCodes(ctx context.Context) error {
 
 func (s *Store) InsertRefreshToken(ctx context.Context, rt RefreshToken) error {
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO refresh_tokens(token_hash,sub,resource,client_id,upstream_refresh_enc,scopes,expires_at) VALUES(?,?,?,?,?,?,?)`,
-		rt.TokenHash, rt.Sub, rt.Resource, rt.ClientID, nullBytes(rt.UpstreamRefreshEnc), rt.Scopes, rt.ExpiresAt.Unix(),
+		`INSERT INTO refresh_tokens(token_hash,sub,resource,client_id,claims_json,upstream_refresh_enc,scopes,expires_at) VALUES(?,?,?,?,?,?,?,?)`,
+		rt.TokenHash, rt.Sub, rt.Resource, rt.ClientID, rt.ClaimsJSON, nullBytes(rt.UpstreamRefreshEnc), rt.Scopes, rt.ExpiresAt.Unix(),
 	)
 	if err != nil {
 		return fmt.Errorf("InsertRefreshToken: %w", err)
@@ -306,9 +307,9 @@ func (s *Store) GetRefreshTokenByHash(ctx context.Context, hash string) (*Refres
 	var expiresAt int64
 	var upstreamRefreshEnc []byte
 	err := s.db.QueryRowContext(ctx,
-		`SELECT token_hash,sub,resource,client_id,upstream_refresh_enc,scopes,expires_at FROM refresh_tokens WHERE token_hash=?`,
+		`SELECT token_hash,sub,resource,client_id,claims_json,upstream_refresh_enc,scopes,expires_at FROM refresh_tokens WHERE token_hash=?`,
 		hash,
-	).Scan(&rt.TokenHash, &rt.Sub, &rt.Resource, &rt.ClientID, &upstreamRefreshEnc, &rt.Scopes, &expiresAt)
+	).Scan(&rt.TokenHash, &rt.Sub, &rt.Resource, &rt.ClientID, &rt.ClaimsJSON, &upstreamRefreshEnc, &rt.Scopes, &expiresAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}

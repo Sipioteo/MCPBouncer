@@ -149,6 +149,7 @@ func handleAuthorizationCode(s *store.Store, issuer *tokens.Issuer, cipher *cryp
 		Sub:                codeRow.Sub,
 		Resource:           codeRow.Resource,
 		ClientID:           codeRow.ClientID,
+		ClaimsJSON:         codeRow.ClaimsJSON,
 		UpstreamRefreshEnc: codeRow.UpstreamRefreshEnc,
 		Scopes:             codeRow.Scopes,
 		ExpiresAt:          refreshExpiry,
@@ -216,8 +217,16 @@ func handleRefreshToken(s *store.Store, oidcMgr *oidc.Manager, issuer *tokens.Is
 		}
 	}
 
-	// Mint new local access + refresh.
-	var extraClaims map[string]any // we don't re-fetch userinfo on refresh for simplicity
+	// Mint new local access + refresh. Identity claims captured at authorization
+	// time are persisted on the refresh token so downstream MCP servers continue
+	// to receive the same user profile after the original access token expires.
+	var extraClaims map[string]any
+	if rt.ClaimsJSON != "" {
+		_ = json.Unmarshal([]byte(rt.ClaimsJSON), &extraClaims)
+	}
+	if extraClaims == nil {
+		extraClaims = map[string]any{}
+	}
 
 	accessToken, _, err := issuer.MintAccessToken(r.Context(), rc, rt.Sub, rt.Scopes, rt.ClientID, extraClaims)
 	if err != nil {
@@ -236,6 +245,7 @@ func handleRefreshToken(s *store.Store, oidcMgr *oidc.Manager, issuer *tokens.Is
 		Sub:                rt.Sub,
 		Resource:           rt.Resource,
 		ClientID:           rt.ClientID,
+		ClaimsJSON:         rt.ClaimsJSON,
 		UpstreamRefreshEnc: upstreamRefreshEnc,
 		Scopes:             rt.Scopes,
 		ExpiresAt:          newExpiry,

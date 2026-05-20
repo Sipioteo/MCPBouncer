@@ -165,12 +165,13 @@ func TestHandleToken_RefreshFlow(t *testing.T) {
 		t.Fatalf("MintRefreshToken: %v", err)
 	}
 	rt := store.RefreshToken{
-		TokenHash: hashRT,
-		Sub:       "testuser",
-		Resource:  deps.rc.Name,
-		ClientID:  "test-client-id",
-		Scopes:    "openid email",
-		ExpiresAt: expiry,
+		TokenHash:  hashRT,
+		Sub:        "testuser",
+		Resource:   deps.rc.Name,
+		ClientID:   "test-client-id",
+		ClaimsJSON: `{"email":"testuser@example.com","name":"Test User"}`,
+		Scopes:     "openid email",
+		ExpiresAt:  expiry,
 	}
 	if err := deps.store.InsertRefreshToken(context.Background(), rt); err != nil {
 		t.Fatalf("InsertRefreshToken: %v", err)
@@ -213,5 +214,35 @@ func TestHandleToken_RefreshFlow(t *testing.T) {
 	}
 	if old != nil {
 		t.Errorf("old refresh token should have been deleted")
+	}
+
+	// Identity claims must survive the refresh and ride into the new access token.
+	at, _ := resp["access_token"].(string)
+	parts := strings.Split(at, ".")
+	if len(parts) != 3 {
+		t.Fatalf("access_token is not a JWT: %q", at)
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		t.Fatalf("decode access_token payload: %v", err)
+	}
+	var claims map[string]any
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		t.Fatalf("unmarshal access_token claims: %v", err)
+	}
+	if got := claims["email"]; got != "testuser@example.com" {
+		t.Errorf("refreshed access_token lost email claim; got %v", got)
+	}
+	if got := claims["name"]; got != "Test User" {
+		t.Errorf("refreshed access_token lost name claim; got %v", got)
+	}
+
+	// And the rotated refresh token must keep the claims for the next cycle.
+	persisted, err := deps.store.GetRefreshTokenByHash(context.Background(), tokens.HashToken(newRT))
+	if err != nil {
+		t.Fatalf("GetRefreshTokenByHash(new): %v", err)
+	}
+	if persisted == nil || !strings.Contains(persisted.ClaimsJSON, "testuser@example.com") {
+		t.Errorf("rotated refresh token did not persist claims; got %+v", persisted)
 	}
 }
