@@ -31,10 +31,12 @@ func HandleAuthorizationServer(rc *config.ResourceConfig, w http.ResponseWriter,
 		scopes = append(scopes, s)
 	}
 	body := map[string]any{
-		"issuer":                                rc.PublicBase,
-		"authorization_endpoint":                rc.PublicBase + "/oauth/authorize",
-		"token_endpoint":                        rc.PublicBase + "/oauth/token",
-		"registration_endpoint":                 rc.PublicBase + "/oauth/register",
+		"issuer":                 rc.PublicBase,
+		"authorization_endpoint": rc.PublicBase + "/oauth/authorize",
+		"token_endpoint":         rc.PublicBase + "/oauth/token",
+		"registration_endpoint":  rc.PublicBase + "/oauth/register",
+		"revocation_endpoint":    rc.PublicBase + "/oauth/revoke",
+		"revocation_endpoint_auth_methods_supported": []string{"client_secret_post", "client_secret_basic"},
 		"jwks_uri":                              rc.PublicBase + "/oauth/jwks.json",
 		"response_types_supported":              []string{"code"},
 		"grant_types_supported":                 []string{"authorization_code", "refresh_token"},
@@ -53,10 +55,12 @@ func HandleOpenIDConfiguration(rc *config.ResourceConfig, w http.ResponseWriter,
 		scopes = append(scopes, s)
 	}
 	body := map[string]any{
-		"issuer":                                rc.PublicBase,
-		"authorization_endpoint":                rc.PublicBase + "/oauth/authorize",
-		"token_endpoint":                        rc.PublicBase + "/oauth/token",
-		"registration_endpoint":                 rc.PublicBase + "/oauth/register",
+		"issuer":                 rc.PublicBase,
+		"authorization_endpoint": rc.PublicBase + "/oauth/authorize",
+		"token_endpoint":         rc.PublicBase + "/oauth/token",
+		"registration_endpoint":  rc.PublicBase + "/oauth/register",
+		"revocation_endpoint":    rc.PublicBase + "/oauth/revoke",
+		"revocation_endpoint_auth_methods_supported": []string{"client_secret_post", "client_secret_basic"},
 		"jwks_uri":                              rc.PublicBase + "/oauth/jwks.json",
 		"response_types_supported":              []string{"code"},
 		"grant_types_supported":                 []string{"authorization_code", "refresh_token"},
