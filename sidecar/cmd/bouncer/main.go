@@ -11,11 +11,13 @@ import (
 	"time"
 
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/as"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/audit"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/config"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/crypto"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/httpx"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/keys"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/logx"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/metrics"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/oidc"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/store"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/tokens"
@@ -44,6 +46,7 @@ func main() {
 	clientTTL := envDuration("BOUNCER_CLIENT_TTL_DAYS", 90, 24*time.Hour)
 	registerLimit := envInt("BOUNCER_REGISTER_RATE_LIMIT", 10)
 	registerWindow := envDuration("BOUNCER_REGISTER_RATE_WINDOW", 1, time.Hour)
+	metricsAddr := envOr("BOUNCER_METRICS_ADDR", ":9090")
 
 	// Open store.
 	db, err := store.Open(dbPath)
@@ -53,18 +56,22 @@ func main() {
 	}
 	s := store.NewStore(db)
 
-	// Init cipher.
-	cipher, err := crypto.NewCipher(encKey)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Init cipher with key versioning. On first boot the env key is seeded
+	// into encryption_keys as the active key (id "k1"); subsequent boots
+	// load all rows and treat the env value as the legacy-decryption
+	// fallback only. See internal/crypto for the wire format.
+	cipher, err := crypto.NewCipherWithStore(ctx, s, encKey)
 	if err != nil {
 		slog.Error("failed to init cipher", "error", err)
 		os.Exit(1)
 	}
+	slog.Info("cipher ready", "active_key_id", cipher.ActiveKeyID())
 
 	// Init key rotator.
 	rotator := keys.New(s, rotationDays, overlapHours, accessTTL)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	if err := rotator.Ensure(ctx); err != nil {
 		slog.Error("failed to ensure signing key", "error", err)
@@ -87,6 +94,36 @@ func main() {
 	// Rate limiter for /oauth/register. Default: 10 req/h per IP.
 	registerLimiter := httpx.NewLimiter(ctx, registerLimit, registerWindow)
 	defer registerLimiter.Close()
+
+	// Async audit logger backed by SQLite. Records OAuth events (DCR, authorize,
+	// token issuance/refresh, revoke, introspect, userinfo) via a path-keyed
+	// middleware. Drops events on backpressure rather than blocking handlers.
+	auditLog := audit.NewSQLiteLogger(s)
+	defer auditLog.Close()
+
+	// Prometheus metrics server on a separate listener so it isn't exposed
+	// behind Traefik. Default :9090. Set BOUNCER_METRICS_ADDR="" to disable.
+	if metricsAddr != "" {
+		mmux := http.NewServeMux()
+		mmux.Handle("/metrics", metrics.Handler())
+		metricsSrv := &http.Server{
+			Addr:         metricsAddr,
+			Handler:      mmux,
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 5 * time.Second,
+		}
+		go func() {
+			slog.Info("metrics listening", "addr", metricsAddr)
+			if err := metricsSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				slog.Error("metrics server error", "error", err)
+			}
+		}()
+		defer func() {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			_ = metricsSrv.Shutdown(shutdownCtx)
+		}()
+	}
 
 	// Build mux.
 	mux := http.NewServeMux()
@@ -143,6 +180,14 @@ func main() {
 		as.HandleRevoke(s, w, r)
 	})
 
+	mux.HandleFunc("/oauth/introspect", withRC(func(rc *config.ResourceConfig, w http.ResponseWriter, r *http.Request) {
+		as.HandleIntrospect(s, rotator, rc, w, r)
+	}))
+
+	mux.HandleFunc("/oauth/userinfo", withRC(func(rc *config.ResourceConfig, w http.ResponseWriter, r *http.Request) {
+		as.HandleUserinfo(s, rotator, rc, w, r)
+	}))
+
 	// Health check (not proxied by plugin, useful for internal monitoring).
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -151,7 +196,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:         listenAddr,
-		Handler:      logRequests(mux),
+		Handler:      logRequests(auditOAuth(auditLog, mux)),
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -178,6 +223,37 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("shutdown error", "error", err)
 	}
+}
+
+// auditEventTypeByPath maps OAuth path -> audit event type. Anything not in
+// this map is not audited (well-known docs, JWKS, healthz, metrics).
+var auditEventTypeByPath = map[string]string{
+	"/oauth/register":   "dcr.register",
+	"/oauth/authorize":  "oauth.authorize",
+	"/oauth/callback":   "oauth.callback",
+	"/oauth/token":      "oauth.token",
+	"/oauth/revoke":     "oauth.revoke",
+	"/oauth/introspect": "oauth.introspect",
+	"/oauth/userinfo":   "oauth.userinfo",
+}
+
+func auditOAuth(logger audit.Logger, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		evt, audited := auditEventTypeByPath[r.URL.Path]
+		if !audited {
+			next.ServeHTTP(w, r)
+			return
+		}
+		sw := &statusRecorder{ResponseWriter: w, status: 200}
+		next.ServeHTTP(sw, r)
+		logger.Record(r.Context(), audit.Event{
+			Type:      evt,
+			IP:        audit.ClientIP(r),
+			Success:   sw.status < 400,
+			Details:   map[string]any{"method": r.Method, "status": sw.status},
+			Timestamp: time.Now(),
+		})
+	})
 }
 
 // logRequests wraps the mux with INFO-level request logging.
