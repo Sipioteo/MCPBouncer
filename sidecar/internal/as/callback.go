@@ -82,14 +82,14 @@ func HandleCallback(s *store.Store, oidcMgr *oidc.Manager, cipher *crypto.Cipher
 	// (at_hash, azp, nonce, auth_time, sub) so the minted token doesn't look
 	// like an ID Token to RFC 9068-aware clients.
 	allowed := map[string]bool{
-		"email":          true,
-		"email_verified": true,
-		"name":           true,
-		"given_name":     true,
-		"family_name":    true,
-		"picture":        true,
-		"locale":         true,
-		"hd":             true,
+		"email":              true,
+		"email_verified":     true,
+		"name":               true,
+		"given_name":         true,
+		"family_name":        true,
+		"picture":            true,
+		"locale":             true,
+		"hd":                 true,
 		"preferred_username": true,
 	}
 	for k := range userClaims {
