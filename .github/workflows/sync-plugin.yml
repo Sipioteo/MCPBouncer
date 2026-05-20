@@ -13,6 +13,8 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -55,3 +57,16 @@ jobs:
             ${{ steps.split.outputs.sha }}:refs/heads/main
           git push git@github.com:Sipioteo/traefik-mcpbouncer.git \
             ${{ steps.split.outputs.sha }}:refs/tags/$DEST_TAG
+
+      - name: Compute release name
+        if: startsWith(github.ref, 'refs/tags/plugin-v')
+        id: relname
+        run: echo "name=Plugin ${GITHUB_REF_NAME#plugin-}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        if: startsWith(github.ref, 'refs/tags/plugin-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.relname.outputs.name }}
+          generate_release_notes: true
+          token: ${{ secrets.GITHUB_TOKEN }}
