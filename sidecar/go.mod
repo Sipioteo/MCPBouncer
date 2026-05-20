@@ -2,6 +2,8 @@ module github.com/Sipioteo/MCPBouncer/sidecar
 
 go 1.25.0
 
+toolchain go1.26.3
+
 require modernc.org/sqlite v1.37.1
 
 require (
