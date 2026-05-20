@@ -36,6 +36,7 @@ type Client struct {
 	Resource                    string
 	Scopes                      string
 	CreatedAt                   time.Time
+	LastUsedAt                  time.Time
 }
 
 type AuthSession struct {
@@ -167,9 +168,12 @@ func (s *Store) DeleteExpiredSigningKeys(ctx context.Context) error {
 // --- Clients ---
 
 func (s *Store) InsertClient(ctx context.Context, c Client) error {
+	if c.LastUsedAt.IsZero() {
+		c.LastUsedAt = time.Now()
+	}
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO clients(client_id,client_secret_hash,redirect_uris_json,registration_access_token_hash,resource,scopes,created_at) VALUES(?,?,?,?,?,?,?)`,
-		c.ClientID, c.ClientSecretHash, c.RedirectURIsJSON, c.RegistrationAccessTokenHash, c.Resource, c.Scopes, c.CreatedAt.Unix(),
+		`INSERT INTO clients(client_id,client_secret_hash,redirect_uris_json,registration_access_token_hash,resource,scopes,created_at,last_used_at) VALUES(?,?,?,?,?,?,?,?)`,
+		c.ClientID, c.ClientSecretHash, c.RedirectURIsJSON, c.RegistrationAccessTokenHash, c.Resource, c.Scopes, c.CreatedAt.Unix(), c.LastUsedAt.Unix(),
 	)
 	if err != nil {
 		return fmt.Errorf("InsertClient: %w", err)
@@ -179,11 +183,11 @@ func (s *Store) InsertClient(ctx context.Context, c Client) error {
 
 func (s *Store) GetClient(ctx context.Context, clientID string) (*Client, error) {
 	var c Client
-	var createdAt int64
+	var createdAt, lastUsedAt int64
 	err := s.db.QueryRowContext(ctx,
-		`SELECT client_id,client_secret_hash,redirect_uris_json,registration_access_token_hash,resource,scopes,created_at FROM clients WHERE client_id=?`,
+		`SELECT client_id,client_secret_hash,redirect_uris_json,registration_access_token_hash,resource,scopes,created_at,last_used_at FROM clients WHERE client_id=?`,
 		clientID,
-	).Scan(&c.ClientID, &c.ClientSecretHash, &c.RedirectURIsJSON, &c.RegistrationAccessTokenHash, &c.Resource, &c.Scopes, &createdAt)
+	).Scan(&c.ClientID, &c.ClientSecretHash, &c.RedirectURIsJSON, &c.RegistrationAccessTokenHash, &c.Resource, &c.Scopes, &createdAt, &lastUsedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -191,7 +195,39 @@ func (s *Store) GetClient(ctx context.Context, clientID string) (*Client, error)
 		return nil, fmt.Errorf("GetClient: %w", err)
 	}
 	c.CreatedAt = time.Unix(createdAt, 0)
+	c.LastUsedAt = time.Unix(lastUsedAt, 0)
 	return &c, nil
+}
+
+// TouchClient updates last_used_at to now for the given client.
+func (s *Store) TouchClient(ctx context.Context, clientID string) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE clients SET last_used_at=? WHERE client_id=?`,
+		time.Now().Unix(), clientID,
+	)
+	if err != nil {
+		return fmt.Errorf("TouchClient: %w", err)
+	}
+	return nil
+}
+
+// DeleteStaleClients deletes clients whose last_used_at is older than olderThan ago.
+// Rows with last_used_at=0 (epoch, pre-migration) are compared against created_at instead.
+func (s *Store) DeleteStaleClients(ctx context.Context, olderThan time.Duration) (int64, error) {
+	cutoff := time.Now().Add(-olderThan).Unix()
+	res, err := s.db.ExecContext(ctx,
+		`DELETE FROM clients WHERE
+			CASE WHEN last_used_at = 0 THEN created_at ELSE last_used_at END < ?`,
+		cutoff,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("DeleteStaleClients: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("DeleteStaleClients rows: %w", err)
+	}
+	return n, nil
 }
 
 // --- AuthSessions ---

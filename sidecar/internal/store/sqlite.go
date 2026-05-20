@@ -51,7 +51,8 @@ func (db *DB) migrate() error {
 			registration_access_token_hash TEXT NOT NULL,
 			resource TEXT NOT NULL,
 			scopes TEXT NOT NULL,
-			created_at INTEGER NOT NULL
+			created_at INTEGER NOT NULL,
+			last_used_at INTEGER NOT NULL DEFAULT 0
 		)`,
 		`CREATE TABLE IF NOT EXISTS auth_sessions (
 			state TEXT PRIMARY KEY,
@@ -111,6 +112,9 @@ func (db *DB) migrate() error {
 		}
 	}
 	if err := addColumnIfMissing(db, "refresh_tokens", "claims_json", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := addColumnIfMissing(db, "clients", "last_used_at", "INTEGER NOT NULL DEFAULT 0"); err != nil {
 		return err
 	}
 	return nil
