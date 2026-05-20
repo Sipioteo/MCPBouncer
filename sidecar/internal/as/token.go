@@ -59,6 +59,7 @@ func HandleToken(s *store.Store, oidcMgr *oidc.Manager, issuer *tokens.Issuer, c
 		writeError(w, http.StatusUnauthorized, "invalid_client", "unknown client")
 		return
 	}
+	_ = s.TouchClient(r.Context(), client.ClientID)
 
 	// Enforce client_secret for confidential clients (those with a stored hash).
 	// A stolen client_id alone must not be sufficient.

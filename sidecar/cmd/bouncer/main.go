@@ -13,6 +13,7 @@ import (
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/as"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/config"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/crypto"
+	"github.com/Sipioteo/MCPBouncer/sidecar/internal/httpx"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/keys"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/logx"
 	"github.com/Sipioteo/MCPBouncer/sidecar/internal/oidc"
@@ -40,6 +41,9 @@ func main() {
 	overlapHours := envDuration("BOUNCER_KEY_OVERLAP_HOURS", 24, time.Hour)
 	accessTTL := envDuration("BOUNCER_ACCESS_TOKEN_TTL", 1, time.Hour)
 	refreshTTL := envDuration("BOUNCER_REFRESH_TOKEN_TTL", 30, 24*time.Hour)
+	clientTTL := envDuration("BOUNCER_CLIENT_TTL_DAYS", 90, 24*time.Hour)
+	registerLimit := envInt("BOUNCER_REGISTER_RATE_LIMIT", 10)
+	registerWindow := envDuration("BOUNCER_REGISTER_RATE_WINDOW", 1, time.Hour)
 
 	// Open store.
 	db, err := store.Open(dbPath)
@@ -76,31 +80,13 @@ func main() {
 	oidcMgr := oidc.NewManager()
 	issuer := tokens.NewIssuer(rotator, accessTTL, refreshTTL)
 
-	// Cleanup goroutine.
-	go func() {
-		tick := time.NewTicker(time.Minute)
-		defer tick.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-tick.C:
-				cleanCtx := context.Background()
-				if err := s.DeleteExpiredAuthSessions(cleanCtx); err != nil {
-					slog.Warn("cleanup auth_sessions error", "error", err)
-				}
-				if err := s.DeleteExpiredCodes(cleanCtx); err != nil {
-					slog.Warn("cleanup codes error", "error", err)
-				}
-				if err := s.DeleteExpiredRefreshTokens(cleanCtx); err != nil {
-					slog.Warn("cleanup refresh_tokens error", "error", err)
-				}
-				if err := s.DeleteExpiredSigningKeys(cleanCtx); err != nil {
-					slog.Warn("cleanup signing_keys error", "error", err)
-				}
-			}
-		}
-	}()
+	// Periodic DB cleanup: expired auth_sessions, codes, refresh_tokens,
+	// signing_keys, plus stale clients past clientTTL. See internal/store/janitor.go.
+	go store.Run(ctx, s, time.Minute, clientTTL)
+
+	// Rate limiter for /oauth/register. Default: 10 req/h per IP.
+	registerLimiter := httpx.NewLimiter(ctx, registerLimit, registerWindow)
+	defer registerLimiter.Close()
 
 	// Build mux.
 	mux := http.NewServeMux()
@@ -136,9 +122,10 @@ func main() {
 		as.HandleOpenIDConfiguration(rc, w, r)
 	}))
 
-	mux.HandleFunc("/oauth/register", withRC(func(rc *config.ResourceConfig, w http.ResponseWriter, r *http.Request) {
+	registerHandler := withRC(func(rc *config.ResourceConfig, w http.ResponseWriter, r *http.Request) {
 		as.HandleRegister(s, rc, w, r)
-	}))
+	})
+	mux.Handle("/oauth/register", registerLimiter.Middleware(registerHandler))
 
 	mux.HandleFunc("/oauth/authorize", withRC(func(rc *config.ResourceConfig, w http.ResponseWriter, r *http.Request) {
 		as.HandleAuthorize(s, oidcMgr, rc, w, r)
@@ -151,6 +138,10 @@ func main() {
 	mux.HandleFunc("/oauth/token", withRC(func(rc *config.ResourceConfig, w http.ResponseWriter, r *http.Request) {
 		as.HandleToken(s, oidcMgr, issuer, cipher, rc, w, r)
 	}))
+
+	mux.HandleFunc("/oauth/revoke", func(w http.ResponseWriter, r *http.Request) {
+		as.HandleRevoke(s, w, r)
+	})
 
 	// Health check (not proxied by plugin, useful for internal monitoring).
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -223,6 +214,18 @@ func envOr(key, def string) string {
 		return v
 	}
 	return def
+}
+
+func envInt(key string, def int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n <= 0 {
+		return def
+	}
+	return n
 }
 
 func mustEnv(key string) string {

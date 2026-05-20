@@ -62,6 +62,7 @@ func HandleAuthorize(s *store.Store, oidcMgr *oidc.Manager, rc *config.ResourceC
 		writeError(w, http.StatusUnauthorized, "invalid_client", "unknown client_id")
 		return
 	}
+	_ = s.TouchClient(r.Context(), client.ClientID)
 
 	var allowedURIs []string
 	if err := json.Unmarshal([]byte(client.RedirectURIsJSON), &allowedURIs); err != nil {
